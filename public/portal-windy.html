@@ -252,7 +252,8 @@
         <span class="badge" title="UAE viewport">UAE zoom</span>
       </header>
 
-      <section id="risk-rail" class="risk-rail" aria-live="polite">
+      <!-- Risk strip: visible only with ?apiBase=… or on localhost (npm run). Hidden on static GitHub Pages. -->
+      <section id="risk-rail" class="risk-rail" aria-live="polite" hidden>
         <div class="risk-rail__summary">
           <span class="risk-rail__title">المخاطر والتنبيهات</span>
           <span id="risk-overall" class="risk-pill risk-pill--low">جاري التحميل…</span>
@@ -384,8 +385,21 @@
     </script>
     <script>
       (function () {
+        var qs = new URLSearchParams(window.location.search);
+        var apiBaseParam = qs.get("apiBase");
+        var isLocal =
+          location.hostname === "localhost" ||
+          location.hostname === "127.0.0.1" ||
+          location.hostname === "";
+        if (!apiBaseParam && !isLocal) {
+          return;
+        }
+
+        var rail = document.getElementById("risk-rail");
+        if (rail) rail.removeAttribute("hidden");
+
         function riskBriefUrl() {
-          var apiBase = new URLSearchParams(window.location.search).get("apiBase");
+          var apiBase = apiBaseParam;
           if (apiBase) return apiBase.replace(/\/$/, "") + "/api/risk-brief";
           return "/api/risk-brief";
         }
