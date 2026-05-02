@@ -81,9 +81,9 @@ const env = {
     firePointsQueryUrl: process.env.ARCGIS_FIREPOINTS_QUERY_URL || "",
   },
   windy: {
-    defaultLat: toNumber(process.env.WINDY_DEFAULT_LAT, 24.45),
-    defaultLon: toNumber(process.env.WINDY_DEFAULT_LON, 54.38),
-    defaultZoom: toNumber(process.env.WINDY_DEFAULT_ZOOM, 6),
+    defaultLat: toNumber(process.env.WINDY_DEFAULT_LAT, 24.35),
+    defaultLon: toNumber(process.env.WINDY_DEFAULT_LON, 54.42),
+    defaultZoom: toNumber(process.env.WINDY_DEFAULT_ZOOM, 8),
     overlay: process.env.WINDY_OVERLAY || "wind",
     level: process.env.WINDY_LEVEL || "surface",
     metricWind: process.env.WINDY_METRIC_WIND || "kmh",
