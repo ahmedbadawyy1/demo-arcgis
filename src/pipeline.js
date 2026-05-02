@@ -7,12 +7,14 @@ const { getEarthquakesMena, getWildfiresMena } = require("./services/hazards.ser
 const { computeRiskScore } = require("./engines/risk-score.engine");
 const { toArcGISFeature, toGeoJSONFeature } = require("./transformers/feature.transformer");
 const { syncFeaturesHybrid, syncFeaturesToLayer } = require("./services/arcgis.service");
+const { buildRiskBrief } = require("./utils/risk-brief.builder");
 
 const state = {
   lastRunAt: null,
   lastSuccessAt: null,
   lastError: null,
   lastSync: null,
+  lastRiskBrief: null,
 };
 
 async function collectForLocation(location, ingestionId) {
@@ -332,6 +334,8 @@ async function runIngestionCycle() {
       "ingestion cycle finished"
     );
 
+    state.lastRiskBrief = buildRiskBrief(records, earthquakes, wildfires);
+
     return {
       records,
       syncResult,
@@ -353,4 +357,8 @@ function getPipelineState() {
   return { ...state };
 }
 
-module.exports = { runIngestionCycle, getPipelineState };
+function getRiskBrief() {
+  return state.lastRiskBrief;
+}
+
+module.exports = { runIngestionCycle, getPipelineState, getRiskBrief };

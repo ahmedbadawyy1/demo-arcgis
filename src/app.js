@@ -5,6 +5,7 @@ const { env } = require("./config/env");
 const { logger } = require("./utils/logger");
 const { getLiveData, getHealth } = require("./controllers/live-data.controller");
 const { getWindyEmbed } = require("./controllers/windy.controller");
+const { corsRiskBrief, getRiskBriefHttp } = require("./controllers/risk-brief.controller");
 const { startScheduler } = require("./jobs/scheduler");
 
 const app = express();
@@ -23,6 +24,8 @@ app.use(express.static(publicDir));
 app.get("/health", getHealth);
 app.get("/api/live-data", getLiveData);
 app.get("/api/windy/embed", getWindyEmbed);
+app.options("/api/risk-brief", corsRiskBrief, (req, res) => res.sendStatus(204));
+app.get("/api/risk-brief", corsRiskBrief, getRiskBriefHttp);
 
 app.use((error, req, res, next) => {
   req.log.error({ err: error }, "request failed");

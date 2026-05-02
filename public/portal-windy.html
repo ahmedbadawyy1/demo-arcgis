@@ -78,6 +78,76 @@
         background: rgba(201, 169, 98, 0.08);
       }
 
+      .risk-rail {
+        padding: 0.55rem 1rem 0.65rem;
+        background: #121821;
+        border-bottom: 1px solid var(--border);
+      }
+      .risk-rail__summary {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.45rem;
+        margin-bottom: 0.45rem;
+      }
+      .risk-rail__title {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--muted);
+      }
+      .risk-pill {
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 0.28rem 0.7rem;
+        border-radius: 999px;
+      }
+      .risk-pill--low {
+        background: rgba(46, 160, 120, 0.22);
+        color: #9ee8c9;
+      }
+      .risk-pill--medium {
+        background: rgba(220, 170, 60, 0.22);
+        color: #ffd87a;
+      }
+      .risk-pill--high {
+        background: rgba(220, 80, 70, 0.28);
+        color: #ffb4ae;
+      }
+      .risk-meta {
+        font-size: 0.68rem;
+        color: var(--muted);
+      }
+      .risk-rail__alarms {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+      }
+      .alarm-chip {
+        font-size: 0.72rem;
+        padding: 0.28rem 0.55rem;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        line-height: 1.35;
+      }
+      .alarm-chip--critical {
+        border-color: rgba(220, 90, 80, 0.55);
+        background: rgba(180, 60, 55, 0.14);
+      }
+      .alarm-chip--warning {
+        border-color: rgba(220, 170, 60, 0.45);
+        background: rgba(220, 170, 60, 0.08);
+      }
+      .alarm-chip--info {
+        border-color: rgba(100, 160, 220, 0.35);
+        background: rgba(80, 140, 200, 0.1);
+      }
+      .risk-rail__hint {
+        margin: 0.35rem 0 0;
+        font-size: 0.68rem;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
       .chrome {
         background: var(--panel);
         border-bottom: 1px solid var(--border);
@@ -181,6 +251,16 @@
         </div>
         <span class="badge" title="UAE viewport">UAE zoom</span>
       </header>
+
+      <section id="risk-rail" class="risk-rail" aria-live="polite">
+        <div class="risk-rail__summary">
+          <span class="risk-rail__title">المخاطر والتنبيهات</span>
+          <span id="risk-overall" class="risk-pill risk-pill--low">جاري التحميل…</span>
+          <span id="risk-meta" class="risk-meta"></span>
+        </div>
+        <div id="risk-alarms" class="risk-rail__alarms"></div>
+        <p id="risk-hint" class="risk-rail__hint" hidden></p>
+      </section>
 
       <div class="chrome">
         <div class="chrome-inner">
@@ -300,6 +380,92 @@
 
         var active = document.querySelector("button.tab.active[data-overlay]");
         loadWindy(active ? active.getAttribute("data-overlay") : "wind");
+      })();
+    </script>
+    <script>
+      (function () {
+        function riskBriefUrl() {
+          var apiBase = new URLSearchParams(window.location.search).get("apiBase");
+          if (apiBase) return apiBase.replace(/\/$/, "") + "/api/risk-brief";
+          return "/api/risk-brief";
+        }
+        function bandLabel(band) {
+          if (band === "high") return "مرتفع";
+          if (band === "medium") return "متوسط";
+          return "منخفض";
+        }
+        function pillClass(band) {
+          if (band === "high") return "risk-pill--high";
+          if (band === "medium") return "risk-pill--medium";
+          return "risk-pill--low";
+        }
+        function chipClass(level) {
+          if (level === "critical") return "alarm-chip alarm-chip--critical";
+          if (level === "warning") return "alarm-chip alarm-chip--warning";
+          return "alarm-chip alarm-chip--info";
+        }
+        var overallEl = document.getElementById("risk-overall");
+        var metaEl = document.getElementById("risk-meta");
+        var alarmsEl = document.getElementById("risk-alarms");
+        var hintEl = document.getElementById("risk-hint");
+
+        function renderRisk(data) {
+          if (!data.ok) return;
+          overallEl.className = "risk-pill " + pillClass(data.overall.maxBand);
+          overallEl.textContent =
+            "أعلى خطر: " +
+            bandLabel(data.overall.maxBand) +
+            " (" +
+            Math.round(data.overall.maxScore) +
+            ")" +
+            (data.overall.worstLocation ? " — " + data.overall.worstLocation : "");
+          var hz = data.hazards || {};
+          metaEl.textContent =
+            "زلازل: " +
+            (hz.earthquakeCount || 0) +
+            " · حرائق: " +
+            (hz.wildfireCount || 0) +
+            " · تحديث: " +
+            new Date(data.generatedAt).toLocaleString("ar-AE");
+          alarmsEl.innerHTML = "";
+          (data.alarms || []).forEach(function (a) {
+            var span = document.createElement("span");
+            span.className = chipClass(a.level);
+            span.textContent = a.text;
+            alarmsEl.appendChild(span);
+          });
+          hintEl.hidden = true;
+        }
+
+        async function refreshRisk() {
+          try {
+            var res = await fetch(riskBriefUrl(), { credentials: "omit" });
+            var data = await res.json();
+            if (!res.ok) throw new Error(data.message || "risk unavailable");
+            if (!data.ok) {
+              overallEl.className = "risk-pill risk-pill--low";
+              overallEl.textContent = "في انتظار أول تحديث";
+              metaEl.textContent = "";
+              alarmsEl.innerHTML = "";
+              hintEl.hidden = false;
+              hintEl.textContent = data.message || "";
+              return;
+            }
+            renderRisk(data);
+          } catch (e) {
+            overallEl.className = "risk-pill risk-pill--low";
+            overallEl.textContent = "التنبيهات غير متصلة";
+            metaEl.textContent = "";
+            alarmsEl.innerHTML = "";
+            hintEl.hidden = false;
+            hintEl.textContent = new URLSearchParams(window.location.search).get("apiBase")
+              ? "تعذر جلب التنبيهات من الخادم."
+              : "لعرض المخاطر والتنبيهات أضف: ?apiBase=https://عنوان-خادمك (بدون / في النهاية)، أو افتح هذه الصفحة من نفس خادم التطبيق.";
+          }
+        }
+
+        refreshRisk();
+        setInterval(refreshRisk, 120000);
       })();
     </script>
   </body>
