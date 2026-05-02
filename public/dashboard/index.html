@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>لوحة الطقس — Windy</title>
+    <style>
+      :root {
+        --bg: #0f1419;
+        --panel: #1a222c;
+        --accent: #c6a04f;
+        --accent-muted: rgba(198, 160, 79, 0.35);
+        --text: #e8ecf1;
+        --muted: #8b96a8;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.65rem 1.25rem;
+        background: var(--panel);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      header h1 {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      header .sub {
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        background: #141a22;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .toolbar button.tab {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: transparent;
+        color: var(--text);
+        padding: 0.45rem 0.9rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.88rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+      .toolbar button.tab:hover {
+        border-color: var(--accent-muted);
+        color: #fff;
+      }
+      .toolbar button.tab.active {
+        background: var(--accent-muted);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .toolbar .grow {
+        flex: 1;
+        min-width: 0.5rem;
+      }
+      .layout {
+        flex: 1;
+        display: flex;
+        min-height: 0;
+      }
+      .side-rail {
+        width: 44px;
+        background: var(--panel);
+        border-inline-start: 1px solid rgba(255, 255, 255, 0.06);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 0.5rem 0;
+        gap: 0.65rem;
+      }
+      .side-rail span {
+        font-size: 1.1rem;
+        opacity: 0.55;
+      }
+      .map-area {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        position: relative;
+      }
+      #windy-iframe {
+        flex: 1;
+        width: 100%;
+        min-height: min(72vh, 820px);
+        border: 0;
+        background: #000;
+      }
+      .loading {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(15, 20, 25, 0.65);
+        color: var(--text);
+        font-size: 0.95rem;
+        z-index: 2;
+      }
+      .loading[hidden] {
+        display: none;
+      }
+      footer.note {
+        padding: 0.5rem 1rem;
+        font-size: 0.72rem;
+        color: var(--muted);
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        line-height: 1.45;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>لوحة الطقس</h1>
+        <div class="sub">Windy — الإمارات والخليج (يعمل مع ArcGIS عند النشر على HTTPS)</div>
+      </div>
+    </header>
+
+    <div class="toolbar">
+      <button type="button" class="tab active" data-overlay="wind" aria-pressed="true">
+        الرياح
+      </button>
+      <button type="button" class="tab" data-overlay="temp" aria-pressed="false">
+        درجة الحرارة
+      </button>
+      <button type="button" class="tab" data-overlay="rh" aria-pressed="false">الرطوبة</button>
+      <button type="button" class="tab" data-overlay="clouds" aria-pressed="false">السحب</button>
+      <button type="button" class="tab" data-overlay="rain" aria-pressed="false">التوقعات</button>
+      <span class="grow"></span>
+      <button type="button" class="tab" id="btn-fullscreen" title="توسيع الخريطة">
+        توسيع الخريطة
+      </button>
+    </div>
+
+    <div class="layout">
+      <div class="map-area" id="map-stage">
+        <div class="loading" id="loading">جاري تحميل الخريطة…</div>
+        <iframe
+          id="windy-iframe"
+          title="Windy map"
+          loading="lazy"
+          allow="fullscreen"
+          referrerpolicy="no-referrer-when-downgrade"
+        ></iframe>
+      </div>
+      <aside class="side-rail" aria-hidden="true">
+        <span title="طقس">🌤</span>
+        <span title="ماء">💧</span>
+        <span title="ثلج">❄</span>
+        <span title="إعدادات">⚙</span>
+      </aside>
+    </div>
+
+    <footer class="note">
+      البيانات المعروضة داخل إطار Windy هي توقعات النموذج العددي الخاص بـ Windy (مجاني عبر الـ embed الرسمي).
+      انقر على الخريطة لعرض تفاصيل النقطة (الرياح، المطر، إلخ). يجب الإبقاء على شعار Windy ظاهرًا وفق شروط الاستخدام.
+      <a href="https://embed.windy.com/config/map" style="color: var(--accent)" target="_blank" rel="noopener"
+        >تهيئة الخريطة</a
+      >
+    </footer>
+
+    <script>
+      (function () {
+        const iframe = document.getElementById("windy-iframe");
+        const loading = document.getElementById("loading");
+        const tabs = document.querySelectorAll("button.tab[data-overlay]");
+        const mapStage = document.getElementById("map-stage");
+
+        function parseNum(q, key, def) {
+          const v = q.get(key);
+          if (v === null || v === "") return def;
+          const n = Number(v);
+          return Number.isFinite(n) ? n : def;
+        }
+
+        function buildWindyEmbedUrlClient(overlay) {
+          const q = new URLSearchParams(window.location.search);
+          const lat = parseNum(q, "lat", 24.45);
+          const lon = parseNum(q, "lon", 54.38);
+          const zoom = parseNum(q, "zoom", 6);
+          const level = q.get("level") || "surface";
+          const metricWind = q.get("metricWind") || "kmh";
+          const metricTemp = q.get("metricTemp") || "default";
+          const radarRange = q.get("radarRange") || "-1";
+          const detailLat = parseNum(q, "detailLat", lat);
+          const detailLon = parseNum(q, "detailLon", lon);
+          const params = new URLSearchParams({
+            lat: String(lat),
+            lon: String(lon),
+            zoom: String(zoom),
+            level,
+            overlay,
+            menu: "",
+            message: "",
+            marker: "",
+            calendar: "",
+            pressure: "",
+            type: "map",
+            location: "coordinates",
+            detail: "",
+            detailLat: String(detailLat),
+            detailLon: String(detailLon),
+            metricWind,
+            metricTemp,
+            radarRange,
+          });
+          return "https://embed.windy.com/embed2.html?" + params.toString();
+        }
+
+        async function loadWindy(overlay) {
+          loading.hidden = false;
+          loading.textContent = "جاري تحميل الخريطة…";
+          try {
+            const q = new URLSearchParams({ overlay });
+            const res = await fetch("/api/windy/embed?" + q.toString());
+            if (!res.ok) throw new Error("embed failed");
+            const data = await res.json();
+            iframe.src = data.embedUrl;
+          } catch (e) {
+            iframe.src = buildWindyEmbedUrlClient(overlay);
+            console.warn("windy api fallback", e);
+          }
+        }
+
+        iframe.addEventListener("load", function () {
+          loading.hidden = true;
+        });
+
+        tabs.forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            const overlay = btn.getAttribute("data-overlay");
+            tabs.forEach(function (b) {
+              b.classList.toggle("active", b === btn);
+              b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+            });
+            loadWindy(overlay);
+          });
+        });
+
+        document.getElementById("btn-fullscreen").addEventListener("click", function () {
+          if (!document.fullscreenElement) {
+            mapStage.requestFullscreen().catch(function () {});
+          } else {
+            document.exitFullscreen();
+          }
+        });
+
+        var active = document.querySelector("button.tab.active[data-overlay]");
+        loadWindy(active ? active.getAttribute("data-overlay") : "wind");
+      })();
+    </script>
+  </body>
+</html>
